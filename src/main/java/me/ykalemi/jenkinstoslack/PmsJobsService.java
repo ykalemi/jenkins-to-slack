@@ -26,7 +26,7 @@ public class PmsJobsService {
 
     @Autowired
     public PmsJobsService(JenkinsService jenkinsService, @Value("${jenkins.pms.folder}") String pmsFolder,
-                          @Value("${jenkins.pms.jobs}") String pmsJobs, @Value("${jenkins.pms.jobs}") String mvJobs) {
+                          @Value("${jenkins.pms.jobs}") String pmsJobs, @Value("${jenkins.mv.jobs}") String mvJobs) {
         this.jenkinsService = jenkinsService;
         this.pmsFolder = pmsFolder;
         this.pmsJobs = pmsJobs.split(",");
