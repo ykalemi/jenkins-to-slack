@@ -19,7 +19,7 @@ public class JenkinsToSlackApplication {
 
         List<String> unsuccessfulJobs = pmsJobs.getUnsuccessfulJobs();
         if (!unsuccessfulJobs.isEmpty()) {
-            slackService.send(StringUtils.join(unsuccessfulJobs, "\n"));
+            slackService.send("Не было более одной успешной сборки подряд:\n" + StringUtils.join(unsuccessfulJobs, "\n"));
         }
     }
 }

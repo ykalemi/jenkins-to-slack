@@ -25,6 +25,7 @@ import java.util.List;
 @Service
 public class JenkinsService {
 
+    private static final UnsuccessfulBuildReport EMPTY_BUILD_REPORT = new UnsuccessfulBuildReport();
     private final String jenkinsUri;
     private final String username;
     private final String password;
@@ -63,19 +64,68 @@ public class JenkinsService {
         List<String> unsuccessfulJobs = new ArrayList<>();
         for (Job job : jobs) {
             JobWithDetails details = job.details();
-            Build lastBuild = details.getLastCompletedBuild();
-            if (Build.BUILD_HAS_NEVER_RUN.equals(lastBuild)) {
-                continue;
-            }
 
-            BuildResult result = lastBuild.details().getResult();
-            if (result != BuildResult.SUCCESS) {
+            UnsuccessfulBuildReport report = createReport(details);
+
+            if (report.unsuccessful) {
                 String msg = String.format("%s/%s build %d: %s (<%s|link>)",
-                        folder.getDisplayName(), job.getName(), lastBuild.getNumber(), result, lastBuild.getUrl());
+                        folder.getDisplayName(), job.getName(), report.lastBuildNumber, report.lastBuildResult, report.lastBuildUrl);
+                if (report.lastSuccessBuildNumber > 0) {
+                    msg += String.format(". Последняя успешная сборка: %d", report.lastSuccessBuildNumber);
+                }
                 unsuccessfulJobs.add(msg);
             }
         }
 
         return unsuccessfulJobs;
+    }
+
+    private UnsuccessfulBuildReport createReport(JobWithDetails details) throws IOException {
+
+        Build lastBuild = details.getLastCompletedBuild();
+
+        BuildResult result = lastBuild.details().getResult();
+
+        if (Build.BUILD_HAS_NEVER_RUN.equals(lastBuild)) {
+            return emptyReport();
+        }
+
+        if (result == BuildResult.SUCCESS) {
+            return emptyReport();
+        }
+
+        Build lastSuccessful = details.getLastStableBuild();
+        if (lastSuccessful == null) {
+            return new UnsuccessfulBuildReport(true, lastBuild.getNumber(), result, lastBuild.getUrl(), 0);
+        }
+
+        if (lastBuild.getNumber() - lastSuccessful.getNumber() == 1) {
+            return emptyReport();
+        }
+
+        return new UnsuccessfulBuildReport(true, lastBuild.getNumber(), result, lastBuild.getUrl(), lastSuccessful.getNumber());
+    }
+
+    private UnsuccessfulBuildReport emptyReport() {
+        return EMPTY_BUILD_REPORT;
+    }
+
+    private static class UnsuccessfulBuildReport {
+
+        boolean unsuccessful;
+        int lastBuildNumber;
+        BuildResult lastBuildResult;
+        String lastBuildUrl;
+        int lastSuccessBuildNumber;
+
+        private UnsuccessfulBuildReport() {}
+
+        private UnsuccessfulBuildReport(boolean unsuccessful, int lastBuildNumber, BuildResult lastBuildResult, String lastBuildUrl, int lastSuccessBuildNumber) {
+            this.unsuccessful = unsuccessful;
+            this.lastBuildNumber = lastBuildNumber;
+            this.lastBuildResult = lastBuildResult;
+            this.lastBuildUrl = lastBuildUrl;
+            this.lastSuccessBuildNumber = lastSuccessBuildNumber;
+        }
     }
 }
