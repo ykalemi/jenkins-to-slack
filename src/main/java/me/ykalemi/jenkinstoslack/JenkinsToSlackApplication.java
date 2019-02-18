@@ -16,10 +16,24 @@ public class JenkinsToSlackApplication {
 
         PmsJobsService pmsJobs = context.getBean(PmsJobsService.class);
         SlackService slackService = context.getBean(SlackService.class);
+        MotivationQuoteService quoteService = context.getBean(MotivationQuoteService.class);
 
         List<String> unsuccessfulJobs = pmsJobs.getUnsuccessfulJobs();
         if (!unsuccessfulJobs.isEmpty()) {
             slackService.send("Не было более одной успешной сборки подряд:\n" + StringUtils.join(unsuccessfulJobs, "\n"));
+        } else {
+
+            String quote = null;
+            try {
+                quote = quoteService.getMotivatingQuote();
+            } catch (IOException e) {
+                // skip
+            }
+            String message = "Вы молодцы, ваши сборки стабильны";
+            if (quote != null) {
+                message += String.format(". Вот вам мотивирующая цитата на грядущий день:\n _%s_" , quote);
+            }
+            slackService.send(message);
         }
     }
 }
