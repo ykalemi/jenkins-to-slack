@@ -3,6 +3,7 @@ package me.ykalemi.jenkinstoslack;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -24,11 +25,15 @@ public class MotivationQuoteService {
     private final String quoteApi;
 
     @Autowired
-    public MotivationQuoteService(@Value("${motivationQuote.uri}") String quoteApi) {
+    public MotivationQuoteService(@Value("${motivationQuote.uri:}") String quoteApi) {
         this.quoteApi = quoteApi;
     }
 
     public String getMotivatingQuote() throws IOException {
+        if (StringUtils.isEmpty(quoteApi)) {
+            return null;
+        }
+
         URL url = new URL(quoteApi);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
