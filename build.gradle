@@ -27,6 +27,7 @@ dependencies {
     implementation 'com.offbytwo.jenkins:jenkins-client:0.3.8'
     implementation 'net.gpedro.integrations.slack:slack-webhook:1.4.0'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.9.8'
+    testCompile 'ch.qos.logback:logback-classic:0.9.26'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 

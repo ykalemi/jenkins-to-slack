@@ -17,6 +17,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author ykalemi
@@ -45,19 +46,20 @@ public class JenkinsService {
         jenkins = new JenkinsServer(new URI(jenkinsUri), username, password);
     }
 
-    FolderJob getRootFolder(String jobName) throws IOException {
+    Optional<FolderJob> getRootFolder(String jobName) throws IOException {
         JobWithDetails opmsJob = jenkins.getJob(jobName);
-        return jenkins.getFolderJob(opmsJob).get();
+        if (opmsJob == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(jenkins.getFolderJob(opmsJob).orNull());
     }
 
-    List<String> getUnsuccessfulJobs(FolderJob parentFolder, String folderName) throws IOException {
-
+    Optional<FolderJob> getFolderJob(FolderJob parentFolder, String folderName) throws IOException {
         Job mv = parentFolder.getJob(folderName);
-        FolderJob folder = jenkins.getFolderJob(mv).get();
-
-        Collection<Job> jobs = folder.getJobs().values();
-
-        return getUnsuccessfulJobs(folder, jobs);
+        if (mv == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(jenkins.getFolderJob(mv).orNull());
     }
 
     List<String> getUnsuccessfulJobs(FolderJob folder, Collection<Job> jobs) throws IOException {

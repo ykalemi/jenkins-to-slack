@@ -1,16 +1,17 @@
 package me.ykalemi.jenkinstoslack;
 
 import com.offbytwo.jenkins.model.FolderJob;
-import com.offbytwo.jenkins.model.Job;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 /**
  * @author ykalemi
@@ -19,35 +20,47 @@ import java.util.stream.Collectors;
 @Service
 public class PmsJobsService {
 
-    private final String pmsFolder;
+    private static final Logger LOG = LoggerFactory.getLogger(PmsJobsService.class);
+
     private final JenkinsService jenkinsService;
-    private final String[] pmsJobs;
-    private final String[] mvJobs;
+    private final String rootFolder;
+    private final String[] subFolders;
 
     @Autowired
-    public PmsJobsService(JenkinsService jenkinsService, @Value("${jenkins.pms.folder}") String pmsFolder,
-                          @Value("${jenkins.pms.jobs}") String pmsJobs, @Value("${jenkins.mv.jobs}") String mvJobs) {
+    public PmsJobsService(JenkinsService jenkinsService, @Value("${jenkins.pms.folder}") String rootFolder,
+                          @Value("${jenkins.pms.jobs}") String subFolders) {
         this.jenkinsService = jenkinsService;
-        this.pmsFolder = pmsFolder;
-        this.pmsJobs = pmsJobs.split(",");
-        this.mvJobs = mvJobs.split(",");
+        this.rootFolder = rootFolder;
+        this.subFolders = subFolders.split(",");
     }
 
     public List<String> getUnsuccessfulJobs() throws IOException {
-        FolderJob opmsFolder = jenkinsService.getRootFolder(pmsFolder);
-
         List<String> unsuccessfulJobs = new ArrayList<>();
+        Optional<FolderJob> rootJobOpt = jenkinsService.getRootFolder(rootFolder);
 
-        for (String mvJobFolder : mvJobs) {
-            unsuccessfulJobs.addAll(jenkinsService.getUnsuccessfulJobs(opmsFolder, mvJobFolder));
+        if (rootJobOpt.isEmpty()) {
+            String msg = String.format("Root folder '%s' doesn't exist. Fix the config", rootFolder);
+            LOG.error(msg);
+            return Collections.singletonList(msg);
         }
-        unsuccessfulJobs.addAll(getUnsuccessfulPmsJobs(opmsFolder));
+
+        FolderJob rootJob = rootJobOpt.get();
+
+        for (String subFolder : subFolders) {
+            Optional<FolderJob> folderOpt = jenkinsService.getFolderJob(rootJob, subFolder);
+            if (folderOpt.isEmpty()) {
+                String msg = String.format("Folder '%s' doesn't exist. Fix the config", subFolder);
+                LOG.error(msg);
+                unsuccessfulJobs.add(msg);
+            } else {
+                unsuccessfulJobs.addAll(getUnsuccessfulPmsJobs(folderOpt.get()));
+            }
+        }
 
         return unsuccessfulJobs;
     }
 
-    private List<String> getUnsuccessfulPmsJobs(FolderJob opmsFolder) throws IOException {
-        List<Job> jobs = Arrays.stream(pmsJobs).map(opmsFolder::getJob).collect(Collectors.toList());
-        return jenkinsService.getUnsuccessfulJobs(opmsFolder, jobs);
+    private List<String> getUnsuccessfulPmsJobs(FolderJob folderJob) throws IOException {
+        return jenkinsService.getUnsuccessfulJobs(folderJob, folderJob.getJobs().values());
     }
 }
