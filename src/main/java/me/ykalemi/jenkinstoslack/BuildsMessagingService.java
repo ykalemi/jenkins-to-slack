@@ -1,6 +1,8 @@
 package me.ykalemi.jenkinstoslack;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,8 @@ import java.util.List;
  */
 @Service
 public class BuildsMessagingService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BuildsMessagingService.class);
 
     private final PmsJobsService pmsJobs;
     private final SlackService slackService;
@@ -30,7 +34,9 @@ public class BuildsMessagingService {
     public void sendBuildsStatusMessages() throws IOException {
         List<String> unsuccessfulJobs = pmsJobs.getUnsuccessfulJobs();
         if (!unsuccessfulJobs.isEmpty()) {
-            slackService.send("Не было более одной успешной сборки подряд:\n" + StringUtils.join(unsuccessfulJobs, "\n"));
+            String message = StringUtils.join(unsuccessfulJobs, "\n");
+            LOG.info("\n" + message);
+            slackService.send("Не было более одной успешной сборки подряд:\n" + message);
         } else if (sendOkMessage) {
             sendOkMessage(slackService, quoteService);
         }
@@ -45,7 +51,7 @@ public class BuildsMessagingService {
         }
         String message = "Вы молодцы, ваши сборки стабильны";
         if (quote != null) {
-            message += String.format(". Вот вам мотивирующая цитата на грядущий день:\n _%s_" , quote);
+            message += String.format(". Вот вам мотивирующая цитата на грядущий день:%n _%s_" , quote);
         }
         slackService.send(message);
     }
